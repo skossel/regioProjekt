@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import MainWindow from './components/MainWindow'
 import ExercisesWindow from './components/ExerciseWindow'
+import TemplatesWindow from './components/TemplatesWindow'
 const App = () => {
     const [page, setPage] = useState('workouts')
     useEffect(() => {
@@ -14,6 +15,7 @@ const App = () => {
         <>
             {page === 'workouts' && <MainWindow />}
             {page === 'exercises' && <ExercisesWindow />}
+            {page === 'templates' && <TemplatesWindow />}
         </>
     )
 }

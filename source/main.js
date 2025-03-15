@@ -1,25 +1,45 @@
-const { app, BrowserWindow, Menu, ipcMain } = require('electron')
+const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron')
 const path = require('path')
+const fs = require('fs')
 const sqlite3 = require('sqlite3').verbose()
 let mainWindow
 let workoutWindow = null
-const dbPath = path.join(__dirname, 'data', 'workouts.db')
-const db = new sqlite3.Database(dbPath, (err) => {
-    if(err){console.error(err)}
-})
-db.serialize(() => {
-    db.run("CREATE TABLE IF NOT EXISTS workouts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, start TEXT, end TEXT)")
-    db.get("SELECT COUNT(*) as count FROM workouts", (err, row) => {
-        if(err){console.error(err)}
-        if(row.count === 0){
-            let stmt = db.prepare("INSERT INTO workouts (name, start, end) VALUES (?, ?, ?)")
-            stmt.run("Workout A", "2023-03-15T09:00", "2023-03-15T10:00")
-            stmt.run("Workout B", "2023-03-16T10:00", "2023-03-16T11:30")
-            stmt.finalize()
+let db
+function getDatabaseSourcePath() {
+    if (app.isPackaged) {
+        return path.join(process.resourcesPath, 'data', 'workouts.db')
+    } else {
+        return path.join(__dirname, 'data', 'workouts.db')
+    }
+}
+function initDatabase() {
+    const targetPath = path.join(app.getPath('userData'), 'workouts.db')
+    const sourcePath = getDatabaseSourcePath()
+    if (!fs.existsSync(targetPath)) {
+        try {
+            fs.copyFileSync(sourcePath, targetPath)
+        } catch (err) {
+            console.error(err)
         }
+    }
+    db = new sqlite3.Database(targetPath, (err)=>{
+        if(err){console.error(err)}
     })
-    db.run("CREATE TABLE IF NOT EXISTS exercises (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, description TEXT, type TEXT)")
-})
+    db.serialize(() => {
+        db.run("CREATE TABLE IF NOT EXISTS workouts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, start TEXT, end TEXT)")
+        db.get("SELECT COUNT(*) as count FROM workouts", (err, row) => {
+            if(err){console.error(err)}
+            if(row && row.count === 0){
+                let stmt = db.prepare("INSERT INTO workouts (name, start, end) VALUES (?, ?, ?)")
+                stmt.run("Workout A", "2023-03-15T09:00", "2023-03-15T10:00")
+                stmt.run("Workout B", "2023-03-16T10:00", "2023-03-16T11:30")
+                stmt.finalize()
+            }
+        })
+        db.run("CREATE TABLE IF NOT EXISTS exercises (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, description TEXT, type TEXT)")
+        db.run("CREATE TABLE IF NOT EXISTS templates (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)")
+    })
+}
 function createWindow(){
     mainWindow = new BrowserWindow({
         width:800,
@@ -45,7 +65,10 @@ function createWindow(){
     Menu.setApplicationMenu(menu)
     mainWindow.on('closed',()=>{mainWindow=null})
 }
-app.on('ready',createWindow)
+app.on('ready', ()=>{
+    initDatabase()
+    createWindow()
+})
 app.on('window-all-closed',()=>{
     if(process.platform!=='darwin'){
         app.quit()
@@ -116,6 +139,30 @@ ipcMain.handle('updateExercise', async (event, exercise)=>{
         return exercise
     }catch(e){console.error(e);return null}
 })
+ipcMain.handle('getTemplates', async ()=>{
+    try{
+        const rows = await runQuery("SELECT * FROM templates")
+        return rows
+    }catch(e){console.error(e);return []}
+})
+ipcMain.handle('deleteTemplate', async (event, id)=>{
+    try{
+        await runCommand("DELETE FROM templates WHERE id = ?", [id])
+        return id
+    }catch(e){console.error(e);return null}
+})
+ipcMain.handle('addTemplate', async (event, template)=>{
+    try{
+        const id = await runCommand("INSERT INTO templates (name) VALUES (?)", [template.name])
+        return {id, ...template}
+    }catch(e){console.error(e);return null}
+})
+ipcMain.handle('updateTemplate', async (event, template)=>{
+    try{
+        await runCommand("UPDATE templates SET name = ? WHERE id = ?", [template.name, template.id])
+        return template
+    }catch(e){console.error(e);return null}
+})
 function createWorkoutWindow(workout=null){
     workoutWindow = new BrowserWindow({
         width:400,
@@ -173,6 +220,37 @@ ipcMain.on('openExerciseWindow', (event, exercise)=>{
 ipcMain.on('closeExerciseWindow', ()=>{
     BrowserWindow.getAllWindows().forEach(win=>{
         if(win.webContents.getURL().includes('exercise.html')){
+            win.close()
+        }
+    })
+})
+function createTemplateWindow(template=null){
+    let templateWindow = new BrowserWindow({
+        width:400,
+        height:200,
+        parent: mainWindow,
+        modal:true,
+        webPreferences:{
+            preload: path.join(__dirname, 'templatePreload.js'),
+            nodeIntegration:false,
+            contextIsolation:true
+        }
+    })
+    let query = ''
+    if(template){
+        query = `?id=${template.id}&name=${encodeURIComponent(template.name)}`
+    }
+    templateWindow.loadURL(`file://${__dirname}/public/template.html${query}`)
+    templateWindow.on('closed', ()=>{
+        if(mainWindow) mainWindow.webContents.send('refreshTemplates')
+    })
+}
+ipcMain.on('openTemplateWindow', (event, template)=>{
+    createTemplateWindow(template)
+})
+ipcMain.on('closeTemplateWindow', ()=>{
+    BrowserWindow.getAllWindows().forEach(win=>{
+        if(win.webContents.getURL().includes('template.html')){
             win.close()
         }
     })

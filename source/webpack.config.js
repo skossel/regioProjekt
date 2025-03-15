@@ -3,7 +3,8 @@ module.exports = {
     mode: 'development',
     entry: {
         main: './src/index.js',
-        workout: './src/workoutIndex.js'
+        workout: './src/workoutIndex.js',
+        template: './src/templateIndex.js'
     },
     output: {
         path: path.resolve(__dirname, 'public'),

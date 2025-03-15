@@ -11,5 +11,11 @@ contextBridge.exposeInMainWorld('api', {
     addExercise: (exercise) => ipcRenderer.invoke('addExercise', exercise),
     updateExercise: (exercise) => ipcRenderer.invoke('updateExercise', exercise),
     openExerciseWindow: (exercise) => ipcRenderer.send('openExerciseWindow', exercise),
-    onRefreshExercises: (callback) => ipcRenderer.on('refreshExercises', callback)
+    onRefreshExercises: (callback) => ipcRenderer.on('refreshExercises', callback),
+    getTemplates: () => ipcRenderer.invoke('getTemplates'),
+    deleteTemplate: (id) => ipcRenderer.invoke('deleteTemplate', id),
+    addTemplate: (template) => ipcRenderer.invoke('addTemplate', template),
+    updateTemplate: (template) => ipcRenderer.invoke('updateTemplate', template),
+    openTemplateWindow: (template) => ipcRenderer.send('openTemplateWindow', template),
+    onRefreshTemplates: (callback) => ipcRenderer.on('refreshTemplates', callback)
 })
