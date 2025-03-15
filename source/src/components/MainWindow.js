@@ -64,10 +64,10 @@ const MainWindow = () => {
                     <Typography variant="h6" style={{ flexGrow:1 }}>
                         Workout Tracker
                     </Typography>
-                    <Button color="inherit" onClick={()=>{}}>
+                    <Button color="inherit" onClick={()=>{ window.dispatchEvent(new CustomEvent('navigate', { detail: 'exercises' })) }}>
                         Exercises
                     </Button>
-                    <Button color="inherit" onClick={()=>{}}>
+                    <Button color="inherit" onClick={()=>{ window.dispatchEvent(new CustomEvent('navigate', { detail: 'templates' })) }}>
                         Templates
                     </Button>
                 </Toolbar>

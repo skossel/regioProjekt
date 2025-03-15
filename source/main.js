@@ -18,6 +18,7 @@ db.serialize(() => {
             stmt.finalize()
         }
     })
+    db.run("CREATE TABLE IF NOT EXISTS exercises (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, description TEXT, type TEXT)")
 })
 function createWindow(){
     mainWindow = new BrowserWindow({
@@ -91,6 +92,30 @@ ipcMain.handle('updateWorkout', async (event, workout)=>{
         return workout
     }catch(e){console.error(e);return null}
 })
+ipcMain.handle('getExercises', async ()=>{
+    try{
+        const rows = await runQuery("SELECT * FROM exercises")
+        return rows
+    }catch(e){console.error(e);return []}
+})
+ipcMain.handle('deleteExercise', async (event, id)=>{
+    try{
+        await runCommand("DELETE FROM exercises WHERE id = ?", [id])
+        return id
+    }catch(e){console.error(e);return null}
+})
+ipcMain.handle('addExercise', async (event, exercise)=>{
+    try{
+        const id = await runCommand("INSERT INTO exercises (name, description, type) VALUES (?, ?, ?)", [exercise.name, exercise.description, exercise.type])
+        return {id, ...exercise}
+    }catch(e){console.error(e);return null}
+})
+ipcMain.handle('updateExercise', async (event, exercise)=>{
+    try{
+        await runCommand("UPDATE exercises SET name = ?, description = ?, type = ? WHERE id = ?", [exercise.name, exercise.description, exercise.type, exercise.id])
+        return exercise
+    }catch(e){console.error(e);return null}
+})
 function createWorkoutWindow(workout=null){
     workoutWindow = new BrowserWindow({
         width:400,
@@ -120,4 +145,35 @@ ipcMain.on('closeWorkoutWindow', ()=>{
     if(workoutWindow){
         workoutWindow.close()
     }
+})
+function createExerciseWindow(exercise=null){
+    let exerciseWindow = new BrowserWindow({
+        width:400,
+        height:300,
+        parent: mainWindow,
+        modal:true,
+        webPreferences:{
+            preload: path.join(__dirname, 'exercisePreload.js'),
+            nodeIntegration:false,
+            contextIsolation:true
+        }
+    })
+    let query = ''
+    if(exercise){
+        query = `?id=${exercise.id}&name=${encodeURIComponent(exercise.name)}&description=${encodeURIComponent(exercise.description)}&type=${encodeURIComponent(exercise.type)}`
+    }
+    exerciseWindow.loadURL(`file://${__dirname}/public/exercise.html${query}`)
+    exerciseWindow.on('closed', ()=>{
+        if(mainWindow) mainWindow.webContents.send('refreshExercises')
+    })
+}
+ipcMain.on('openExerciseWindow', (event, exercise)=>{
+    createExerciseWindow(exercise)
+})
+ipcMain.on('closeExerciseWindow', ()=>{
+    BrowserWindow.getAllWindows().forEach(win=>{
+        if(win.webContents.getURL().includes('exercise.html')){
+            win.close()
+        }
+    })
 })
