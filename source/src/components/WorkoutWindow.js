@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Container, TextField, Button, Typography, Box } from '@mui/material'
 const WorkoutWindow = () => {
     const params = new URLSearchParams(window.location.search)
     const id = params.get('id')
@@ -6,6 +7,10 @@ const WorkoutWindow = () => {
     const [start, setStart] = useState(params.get('start') || '')
     const [end, setEnd] = useState(params.get('end') || '')
     const handleSave = () => {
+        if(name.trim() === '' || start.trim() === '' || end.trim() === ''){
+            alert("Bitte alle Felder ausfüllen")
+            return
+        }
         if(id){
             const workout = { id: parseInt(id), name, start, end }
             window.workoutApi.updateWorkout(workout).then(()=>{
@@ -22,25 +27,18 @@ const WorkoutWindow = () => {
         window.workoutApi.closeWindow()
     }
     return (
-        <div style={{ padding:'20px' }}>
-            <h2>{id ? 'Edit Workout' : 'Add Workout'}</h2>
-            <div>
-                <label>Name:</label>
-                <input type="text" value={name} onChange={e=>setName(e.target.value)} />
-            </div>
-            <div>
-                <label>Start (ISO):</label>
-                <input type="text" value={start} onChange={e=>setStart(e.target.value)} />
-            </div>
-            <div>
-                <label>End (ISO):</label>
-                <input type="text" value={end} onChange={e=>setEnd(e.target.value)} />
-            </div>
-            <div style={{ marginTop:'20px' }}>
-                <button onClick={handleSave}>{id ? 'Update' : 'Add'}</button>
-                <button onClick={handleCancel} style={{ marginLeft:'10px' }}>Cancel</button>
-            </div>
-        </div>
+        <Container maxWidth="sm" style={{ padding: '20px' }}>
+            <Typography variant="h5" gutterBottom>{id ? 'Workout bearbeiten' : 'Workout hinzufügen'}</Typography>
+            <Box component="form" noValidate autoComplete="off">
+                <TextField label="Name" fullWidth margin="normal" value={name} onChange={e=>setName(e.target.value)} />
+                <TextField label="Start (ISO)" fullWidth margin="normal" value={start} onChange={e=>setStart(e.target.value)} />
+                <TextField label="End (ISO)" fullWidth margin="normal" value={end} onChange={e=>setEnd(e.target.value)} />
+                <Box mt={2} display="flex" justifyContent="space-between">
+                    <Button variant="contained" color="primary" onClick={handleSave}>{id ? 'Update' : 'Add'}</Button>
+                    <Button variant="contained" color="secondary" onClick={handleCancel}>Cancel</Button>
+                </Box>
+            </Box>
+        </Container>
     )
 }
 export default WorkoutWindow

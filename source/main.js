@@ -103,11 +103,11 @@ function createWorkoutWindow(workout=null){
             contextIsolation:true
         }
     })
-    let url = path.join(__dirname, 'public', 'workout.html')
+    let query = ''
     if(workout){
-        url += '?id=' + workout.id + '&name=' + encodeURIComponent(workout.name) + '&start=' + encodeURIComponent(workout.start) + '&end=' + encodeURIComponent(workout.end)
+        query = `?id=${workout.id}&name=${encodeURIComponent(workout.name)}&start=${encodeURIComponent(workout.start)}&end=${encodeURIComponent(workout.end)}`
     }
-    workoutWindow.loadFile(url)
+    workoutWindow.loadURL(`file://${__dirname}/public/workout.html${query}`)
     workoutWindow.on('closed', ()=>{
         workoutWindow = null
         if(mainWindow) mainWindow.webContents.send('refreshWorkouts')

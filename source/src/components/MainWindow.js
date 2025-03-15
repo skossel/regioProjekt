@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { AppBar, Toolbar, Typography, Container, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, IconButton } from '@mui/material'
+import { AppBar, Toolbar, Typography, Container, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 const MainWindow = () => {
     const [workouts, setWorkouts] = useState([])
     const [selectedWorkoutId, setSelectedWorkoutId] = useState(null)
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [workoutToDelete, setWorkoutToDelete] = useState(null)
     const fetchWorkouts = () => {
         window.api.getWorkouts().then(data=>{
             setWorkouts(data)
@@ -25,12 +27,22 @@ const MainWindow = () => {
         const remainingMinutes = minutes % 60
         return hours+'h '+remainingMinutes+'m'
     }
-    const handleDelete = (id) => {
-        window.api.deleteWorkout(id).then(deletedId=>{
+    const handleDeleteClick = (id) => {
+        setWorkoutToDelete(id)
+        setDeleteDialogOpen(true)
+    }
+    const confirmDelete = () => {
+        window.api.deleteWorkout(workoutToDelete).then(deletedId=>{
             if(deletedId!==null){
-                setWorkouts(workouts.filter(workout=>workout.id!==id))
+                setWorkouts(workouts.filter(workout=>workout.id!==workoutToDelete))
             }
         })
+        setDeleteDialogOpen(false)
+        setWorkoutToDelete(null)
+    }
+    const cancelDelete = () => {
+        setDeleteDialogOpen(false)
+        setWorkoutToDelete(null)
     }
     const handleRowClick = (id) => {
         setSelectedWorkoutId(id)
@@ -80,7 +92,7 @@ const MainWindow = () => {
                                     <TableCell>{new Date(workout.end).toLocaleString()}</TableCell>
                                     <TableCell>{calculateDuration(workout.start, workout.end)}</TableCell>
                                     <TableCell>
-                                        <IconButton onClick={e=>{e.stopPropagation(); handleDelete(workout.id)}}>
+                                        <IconButton onClick={e=>{e.stopPropagation(); handleDeleteClick(workout.id)}}>
                                             <DeleteIcon />
                                         </IconButton>
                                         <IconButton onClick={e=>{e.stopPropagation(); setSelectedWorkoutId(workout.id); handleEditWorkout()}}>
@@ -101,6 +113,14 @@ const MainWindow = () => {
                     </Button>
                 </div>
             </Container>
+            <Dialog open={deleteDialogOpen} onClose={cancelDelete}>
+                <DialogTitle>Workout löschen</DialogTitle>
+                <DialogContent>Möchten Sie dieses Workout wirklich löschen?</DialogContent>
+                <DialogActions>
+                    <Button onClick={cancelDelete} color="secondary">Abbrechen</Button>
+                    <Button onClick={confirmDelete} color="primary">Löschen</Button>
+                </DialogActions>
+            </Dialog>
         </div>
     )
 }
